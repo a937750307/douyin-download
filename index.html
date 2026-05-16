@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抖音视频解析</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 520px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1d1d1f;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #86868b;
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+        .input-group { position: relative; margin-bottom: 16px; }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d2d2d7;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+        input[type="text"]:focus {
+            border-color: #0071e3;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(0,113,227,0.1);
+        }
+        input[type="text"]::placeholder { color: #a1a1a6; }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        button {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #0071e3;
+            color: #fff;
+        }
+        .btn-primary:hover { background: #0077ed; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary {
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+        .btn-secondary:hover { background: #e8e8ed; }
+        .result {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .result.show { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .result-card {
+            background: #f5f5f7;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+        .result-label {
+            font-size: 12px;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .result-value {
+            font-size: 15px;
+            color: #1d1d1f;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+        .result-value a {
+            color: #0071e3;
+            text-decoration: none;
+        }
+        .result-value a:hover { text-decoration: underline; }
+        .video-preview {
+            width: 100%;
+            border-radius: 12px;
+            margin-top: 8px;
+            background: #000;
+            max-height: 400px;
+        }
+        .img-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .img-grid img {
+            width: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+            aspect-ratio: 1;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: #fff;
+            border-radius: 10px;
+        }
+        .stat-num {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #86868b;
+            margin-top: 2px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #86868b;
+        }
+        .loading.show { display: block; }
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #e8e8ed;
+            border-top-color: #0071e3;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error {
+            display: none;
+            background: #fff2f2;
+            color: #d70015;
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .error.show { display: block; }
+        .error pre {
+            margin-top: 8px;
+            font-size: 12px;
+            background: rgba(215,0,21,0.05);
+            padding: 8px;
+            border-radius: 6px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .download-btn {
+            background: #0071e3;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        .download-btn:hover { background: #0077ed; }
+        .download-btn:disabled {
+            background: #86868b;
+            cursor: not-allowed;
+        }
+        .download-status {
+            font-size: 12px;
+            color: #86868b;
+            margin-top: 4px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #a1a1a6;
+        }
+
+        /* 备案信息样式 - 白底黑字 */
+        .beian-bar {
+            width: 100%;
+            background: #fff;
+            border: 1px solid #e8e8ed;
+            padding: 12px 0;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 20px;
+            border-radius: 12px;
+        }
+        .beian-pc {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 0 16px;
+        }
+        .beian-disclaimer {
+            color: #d70015;
+            white-space: nowrap;
+        }
+        .beian-icp {
+            color: #1d1d1f;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .beian-icp:hover { text-decoration: underline; }
+        .beian-gongan {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #1d1d1f;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .beian-gongan:hover { text-decoration: underline; }
+        .beian-gongan img {
+            width: 16px;
+            height: 16px;
+        }
+        @media(max-width:768px) {
+            .beian-pc { display: none; }
+            .beian-mobile {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                padding: 0 16px;
+            }
+            .beian-mobile a, .beian-mobile span {
+                display: block;
+                line-height: 1.8;
+            }
+        }
+        @media(min-width:769px) {
+            .beian-mobile { display: none; }
+        }
+    </style>
+    <base target="_blank">
+<base target="_blank">
+</head>
+<body>
+    <div class="container">
+        <h1>抖音视频解析</h1>
+        <p class="subtitle">粘贴抖音分享链接，获取视频/图集信息</p>
+
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="https://v.douyin.com/xxxxx" autocomplete="off">
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-secondary" onclick="parseInfo()">获取信息</button>
+            <button class="btn-primary" onclick="parseUrl()">获取直链</button>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>解析中...</div>
+        </div>
+
+        <div class="result" id="result"></div>
+
+        <!-- 备案信息 -->
+        <div class="beian-bar">
+            <div class="beian-pc">
+                <span class="beian-disclaimer">本站内容仅供学习和交流，非商业用途</span>
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" class="beian-icp">浙ICP备2025187466号</a>
+                <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=33030402001483" target="_blank" rel="noopener noreferrer" class="beian-gongan">
+                    <img src="https://www.937788.xyz/gonganbeian.png" alt="公安备案" onerror="this.style.display='none'">
+                    浙公网安备33030402001483号
+                </a>
+            </div>
+            <div class="beian-mobile">
+                <span class="beian-disclaimer">本站内容仅供学习和交流，非商业用途</span>
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" class="beian-icp">浙ICP备2025187466号</a>
+                <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=33030402001483" target="_blank" rel="noopener noreferrer" class="beian-gongan">
+                    <img src="https://www.937788.xyz/gonganbeian.png" alt="公安备案" onerror="this.style.display='none'">
+                    浙公网安备33030402001483号
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://douyindown.937788.xyz';
+
+        function proxyUrl(originalUrl) {
+            return `${API_BASE}/proxy?url=${encodeURIComponent(originalUrl)}`;
+        }       
+
+        function showError(msg, detail) {
+            const el = document.getElementById('error');
+            let html = msg;
+            if (detail) html += `<pre>${detail}</pre>`;
+            el.innerHTML = html;
+            el.classList.add('show');
+        }
+
+        function clearError() {
+            document.getElementById('error').classList.remove('show');
+        }
+
+        function setLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+            if (show) {
+                document.getElementById('result').classList.remove('show');
+                clearError();
+            }
+        }
+
+        function formatNum(n) {
+            if (n === null || n === undefined) return '-';
+            return n >= 10000 ? (n/10000).toFixed(1) + 'w' : n.toLocaleString();
+        }
+
+        // 下载视频（通过 fetch 获取 Blob 绕过跨域限制）
+        async function downloadVideo(videoUrl, filename = 'video.mp4', btnElement) {
+            const statusEl = btnElement.nextElementSibling;
+
+            try {
+                btnElement.disabled = true;
+                if (statusEl) statusEl.textContent = '下载中...';
+
+                const proxy = proxyUrl(videoUrl);
+                const resp = await fetch(proxy);
+
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                }
+
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 1000);
+
+                if (statusEl) statusEl.textContent = '下载完成';
+
+            } catch (e) {
+                console.error('下载失败:', e);
+                if (statusEl) statusEl.textContent = '下载失败，尝试直接打开...';
+                // 降级：直接打开代理链接
+                setTimeout(() => {
+                    window.open(proxyUrl(videoUrl), '_blank');
+                }, 1000);
+            } finally {
+                btnElement.disabled = false;
+            }
+        }
+
+        async function parseInfo() {
+            const inputUrl = document.getElementById('urlInput').value.trim();
+            if (!inputUrl) return showError('请输入抖音链接');
+
+            setLoading(true);
+            const apiUrl = `${API_BASE}?url=${encodeURIComponent(inputUrl)}&data=1`;
+            console.log('[请求]', apiUrl);
+
+            try {
+                const resp = await fetch(apiUrl);
+                console.log('[响应状态]', resp.status, resp.statusText);
+
+                const text = await resp.text();
+                console.log('[响应内容]', text.substring(0, 500));
+
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${resp.statusText}\n${text.substring(0, 200)}`);
+                }
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`JSON 解析失败: ${e.message}\n返回内容: ${text.substring(0, 200)}`);
+                }
+
+                if (data.error) throw new Error(data.error);
+
+                console.log('[解析结果]', data);
+                renderInfo(data);
+
+            } catch (e) {
+                console.error('[错误]', e);
+                showError('解析失败', e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function parseUrl() {
+            const inputUrl = document.getElementById('urlInput').value.trim();
+            if (!inputUrl) return showError('请输入抖音链接');
+
+            setLoading(true);
+            const apiUrl = `${API_BASE}?url=${encodeURIComponent(inputUrl)}`;
+            console.log('[请求]', apiUrl);
+
+            try {
+                const resp = await fetch(apiUrl);
+                console.log('[响应状态]', resp.status, resp.statusText);
+
+                const text = await resp.text();
+                console.log('[响应内容]', text.substring(0, 500));
+
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${resp.statusText}\n${text.substring(0, 200)}`);
+                }
+
+                if (text.includes('error') || text.includes('请提供')) {
+                    throw new Error(text);
+                }
+
+                renderUrl(text.trim());
+
+            } catch (e) {
+                console.error('[错误]', e);
+                showError('解析失败', e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function renderInfo(data) {
+            const result = document.getElementById('result');
+            let html = '';
+
+            const hasContent = data.nickname || data.desc || data.video_url || (data.image_url_list && data.image_url_list.length);
+            if (!hasContent) {
+                html += `<div class="result-card">
+                    <div class="result-value" style="color:#86868b;text-align:center;">未解析到有效内容</div>
+                </div>`;
+            }
+
+            if (data.nickname) {
+                html += `<div class="result-card">
+                    <div class="result-label">作者</div>
+                    <div class="result-value">${escapeHtml(data.nickname)}</div>
+                    ${data.signature ? `<div style="margin-top:4px;color:#86868b;font-size:13px;">${escapeHtml(data.signature)}</div>` : ''}
+                </div>`;
+            }
+
+            if (data.desc) {
+                html += `<div class="result-card">
+                    <div class="result-label">描述</div>
+                    <div class="result-value">${escapeHtml(data.desc)}</div>
+                </div>`;
+            }
+
+            if (data.create_time) {
+                html += `<div class="result-card">
+                    <div class="result-label">发布时间</div>
+                    <div class="result-value">${data.create_time}</div>
+                </div>`;
+            }
+
+            if (data.type === 'video' && data.video_url) {
+                html += `<div class="result-card">
+                    <div class="result-label">视频预览</div>
+                    <video class="video-preview" controls crossorigin="anonymous" src="${proxyUrl(data.video_url)}"></video>
+                    <div style="margin-top:8px;">
+                        <button class="download-btn" onclick="downloadVideo('${data.video_url}', 'video.mp4', this)">下载视频</button>
+                        <div class="download-status"></div>
+                    </div>
+                </div>`;
+            } else if (data.image_url_list && data.image_url_list.length) {
+                html += `<div class="result-card">
+                    <div class="result-label">图集 (${data.image_url_list.length}张)</div>
+                    <div class="img-grid">`;
+                data.image_url_list.forEach(img => {
+                    html += `<a href="${img}" target="_blank"><img src="${img}" loading="lazy" onerror="this.style.display='none'"></a>`;
+                });
+                html += `</div></div>`;
+            }
+
+            if (data.digg_count !== null && data.digg_count !== undefined) {
+                html += `<div class="result-card">
+                    <div class="result-label">互动数据</div>
+                    <div class="stats-grid">
+                        <div class="stat-item"><div class="stat-num">${formatNum(data.digg_count)}</div><div class="stat-label">点赞</div></div>
+                        <div class="stat-item"><div class="stat-num">${formatNum(data.comment_count)}</div><div class="stat-label">评论</div></div>
+                        <div class="stat-item"><div class="stat-num">${formatNum(data.share_count)}</div><div class="stat-label">分享</div></div>
+                        <div class="stat-item"><div class="stat-num">${formatNum(data.collect_count)}</div><div class="stat-label">收藏</div></div>
+                        <div class="stat-item"><div class="stat-num">${formatNum(data.play_count)}</div><div class="stat-label">播放</div></div>
+                    </div>
+                </div>`;
+            }
+
+            result.innerHTML = html;
+            result.classList.add('show');
+        }
+
+        function renderUrl(videoUrl) {
+            const result = document.getElementById('result');
+            result.innerHTML = `<div class="result-card">
+                <div class="result-label">视频直链</div>
+                <div class="result-value" style="font-size:12px;color:#86868b;margin-bottom:8px;">已走代理，可直接播放下载</div>
+                <video class="video-preview" controls crossorigin="anonymous" src="${proxyUrl(videoUrl)}"></video>
+                <div style="margin-top:12px;">
+                    <button class="download-btn" onclick="downloadVideo('${videoUrl}', 'video.mp4', this)">下载视频</button>
+                    <div class="download-status"></div>
+                </div>
+            </div>`;
+            result.classList.add('show');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('urlInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter') parseInfo();
+        });
+    </script>
+</body>
+</html>
